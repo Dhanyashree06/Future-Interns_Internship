@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Sales AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .search-section {
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .search-row {
+            display: flex;
+            gap: 1rem;
+        }
+        .search-input {
+            flex: 1;
+            background: var(--card-bg);
+            border: 1px solid var(--glass);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            color: white;
+            outline: none;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+        .search-hints {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .hint-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+        .hint-tag {
+            background: rgba(79, 70, 229, 0.12);
+            color: #818cf8;
+            border: 1px solid rgba(79, 70, 229, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .hint-tag:hover {
+            background: rgba(79, 70, 229, 0.3);
+        }
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            border: 1px solid var(--glass);
+            margin-top: 2rem;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: var(--text-secondary);
+        }
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
+        }
+        td {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--glass);
+        }
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+            color: var(--text-primary);
+        }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-region { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
+        .badge-sales { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .no-results {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .no-results h3 {
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        .no-results p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+        .available-products {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        .available-tag {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .available-tag:hover {
+            background: rgba(16, 185, 129, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Analytics Dashboard</h1>
+            <a href="/" class="btn" style="background: transparent; border: 1px solid var(--glass)">Back to Home</a>
+        </header>
+
+        <!-- Search Bar with quick-pick hints -->
+        <form action="/dashboard" method="GET" class="search-section" id="searchForm">
+            <div class="search-row">
+                <input type="text" id="searchInput" name="search" class="search-input"
+                    placeholder="Search by Product (e.g. Laptop, Tablet) or Region (e.g. North, West)..."
+                    value="{{ data.search_term }}">
+                <button type="submit" class="btn">Search</button>
+                {% if data.search_term %}
+                <a href="/dashboard" class="btn" style="background: transparent; border: 1px solid #ef4444; color: #ef4444;">Clear</a>
+                {% endif %}
+            </div>
+            <div class="search-hints">
+                <span class="hint-label">Quick search:</span>
+                {% for p in data.products %}
+                <span class="hint-tag" onclick="quickSearch('{{ p }}')">{{ p }}</span>
+                {% endfor %}
+                {% for r in data.regions %}
+                <span class="hint-tag" onclick="quickSearch('{{ r }}')">{{ r }}</span>
+                {% endfor %}
+            </div>
+        </form>
+
+        <!-- KPI Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Historical Sales</div>
+                <div class="stat-value">{{ data.stats.total_sales }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg. Order Value</div>
+                <div class="stat-value">{{ data.stats.avg_sales }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Transactions</div>
+                <div class="stat-value">{{ data.stats.total_orders }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Top Region</div>
+                <div class="stat-value" style="color: var(--secondary)">{{ data.stats.top_region }}</div>
+            </div>
+        </div>
+
+        <!-- Sales Forecast Chart -->
+        <div class="chart-container">
+            <h2 style="margin-bottom: 1.5rem; font-weight: 600;">Monthly Sales Forecast</h2>
+            <canvas id="salesChart" height="100"></canvas>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-container">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--glass); display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size: 1.25rem; font-weight: 600;">
+                    Data Records
+                    {% if data.search_term %}
+                    <span style="color: #818cf8; font-weight: 400; font-size: 1rem;">&nbsp;— Results for "{{ data.search_term }}"</span>
+                    {% endif %}
+                </h2>
+                <span style="color: var(--text-secondary); font-size: 0.875rem;">Showing {{ data.results|length }} of {{ data.total_count }} records</span>
+            </div>
+            <div style="overflow-x: auto;">
+                {% if data.results %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order Date</th>
+                            <th>Product</th>
+                            <th>Region</th>
+                            <th>Qty</th>
+                            <th>Sales</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data.results %}
+                        <tr>
+                            <td>{{ row['Order Date'] }}</td>
+                            <td style="color: var(--text-primary); font-weight: 500;">{{ row['Product'] }}</td>
+                            <td><span class="badge badge-region">{{ row['Region'] }}</span></td>
+                            <td>{{ row['Quantity'] }}</td>
+                            <td><span class="badge badge-sales">${{ "%.2f"|format(row['Sales']) }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="no-results">
+                    <h3>🔍 No results found for "{{ data.search_term }}"</h3>
+                    <p>The dataset does not contain any records matching that term.<br>Available products and regions are listed below — click one to search:</p>
+                    <div class="available-products">
+                        {% for p in data.products %}
+                        <a href="/dashboard?search={{ p }}" class="available-tag">{{ p }}</a>
+                        {% endfor %}
+                        {% for r in data.regions %}
+                        <a href="/dashboard?search={{ r }}" class="available-tag" style="background: rgba(14,165,233,0.1); color: #0ea5e9; border-color: rgba(14,165,233,0.3);">{{ r }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Inject server data safely for JS consumption -->
+    <script id="forecastJson" type="application/json">{{ data.forecast | tojson }}</script>
+    <script id="historicalJson" type="application/json">{{ data.historical | tojson }}</script>
+
+    <script>
+        function quickSearch(term) {
+            document.getElementById('searchInput').value = term;
+            document.getElementById('searchForm').submit();
+        }
+
+        var ctx = document.getElementById('salesChart').getContext('2d');
+        var forecastData = JSON.parse(document.getElementById('forecastJson').textContent);
+        var historicalData = JSON.parse(document.getElementById('historicalJson').textContent);
+
+        const labels = forecastData.map(function(d) { return d.label; });
+        const forecastValues = forecastData.map(function(d) { return d.value; });
+        const historicalValues = historicalData.map(function(d) { return d.value; });
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Predicted Sales',
+                        data: forecastValues,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#4f46e5',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    },
+                    {
+                        label: 'Historical Trend',
+                        data: historicalValues,
+                        borderColor: '#10b981',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#94a3b8', font: { weight: 'bold' } }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#94a3b8',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
